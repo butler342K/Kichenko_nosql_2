@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(/home/viper/work/GoIT/Mongo/Kichenko_nosql_2/.venv/bin/python 01_prepare_data.py)"
+    ]
+  }
+}
