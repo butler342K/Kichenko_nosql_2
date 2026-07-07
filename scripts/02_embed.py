@@ -3,8 +3,8 @@ import numpy as np
 import pandas as pd
 from sentence_transformers import SentenceTransformer
 
-INPUT_FILE  = "../data/arxiv_subset.parquet"
-OUTPUT_DIR  = "../embeddings"
+INPUT_FILE  = "data/arxiv_subset.parquet"
+OUTPUT_DIR  = "embeddings"
 OUTPUT_FILE = f"{OUTPUT_DIR}/embeddings.npy"
 
 df = pd.read_parquet(INPUT_FILE)

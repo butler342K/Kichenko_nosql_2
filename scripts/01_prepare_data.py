@@ -1,11 +1,14 @@
 import json
 import os
+import random
 import pandas as pd
 from tqdm import tqdm
 
-INPUT_FILE  = "../data/arxiv-metadata-oai-snapshot.json"
-OUTPUT_FILE = "../data/arxiv_subset.parquet"
-MAX_RECORDS = 10_000
+INPUT_FILE   = "data/arxiv-metadata-oai-snapshot.json"
+OUTPUT_FILE  = "data/arxiv_subset.parquet"
+MAX_RECORDS  = 10_000
+TOTAL_LINES  = 3_094_252  # для прогрес-бару, приблизна кількість рядків у знімку
+SEED         = 42
 
 os.makedirs("data", exist_ok=True)
 
@@ -44,11 +47,19 @@ def format_authors(paper: dict) -> str:
     # Запасний варіант: сирий рядок авторів
     return paper.get("authors", "").replace("\\n", " ")
 
-records = []
+random.seed(SEED)
+
+# Знімок arXiv впорядкований за ID, а ID зростає в часі (0704.0001 = квітень 2007,
+# і так далі). Якщо просто брати перші MAX_RECORDS придатних рядків, вибірка
+# складається лише з кількох місяців 2007 року — рік/категорія перестають бути
+# змістовними для фільтрації. Тому робимо резервуарну вибірку (Algorithm R):
+# один прохід по всьому файлу, у результаті — рівномірний випадковий підмножина
+# розміром MAX_RECORDS з усіх придатних записів за всю історію arXiv.
+reservoir = []
+n_valid_seen = 0
+
 with open(INPUT_FILE, "r", encoding="utf-8") as f:
-    for line in tqdm(f, desc="Читаємо датасет"):
-        if len(records) >= MAX_RECORDS:
-            break
+    for line in tqdm(f, desc="Читаємо датасет", total=TOTAL_LINES):
         line = line.strip()
         if not line:
             continue
@@ -66,14 +77,24 @@ with open(INPUT_FILE, "r", encoding="utf-8") as f:
         categories_raw = paper.get("categories", "unknown")
         primary_category = categories_raw.split()[0]
 
-        records.append({
+        record = {
             "id":       paper["id"],
             "title":    title.replace("\\n", " ").strip(),
             "abstract": abstract.replace("\\n", " ").strip(),
             "authors":  format_authors(paper),
             "year":     extract_year(paper),
             "category": primary_category,
-        })
+        }
+
+        if len(reservoir) < MAX_RECORDS:
+            reservoir.append(record)
+        else:
+            j = random.randint(0, n_valid_seen)
+            if j < MAX_RECORDS:
+                reservoir[j] = record
+        n_valid_seen += 1
+
+records = reservoir
 
 df = pd.DataFrame(records)
 print(f"\\nЗавантажено статей:{len(df)}")
