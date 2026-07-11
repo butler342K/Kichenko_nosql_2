@@ -3,3 +3,6 @@ data/*
 .venv
 .env
 .vscode
+embeddings/*.npy
+__pycache__/
+*.pyc
